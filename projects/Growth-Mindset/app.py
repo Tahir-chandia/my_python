@@ -1,6 +1,7 @@
 # Imports
 import streamlit as st
 import pandas as pd
+import xlsxwriter  # ✅ Explicitly Import xlsxwriter
 import os
 from io import BytesIO    
 
@@ -10,20 +11,17 @@ st.set_page_config(page_title="Data Sweeper", layout="wide")
 # Custom CSS for Styling (Move AFTER set_page_config)
 st.markdown("""
     <style>
-        /* Custom Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
         html, body, [class*="st-"] {
             font-family: 'Poppins', sans-serif;
         }
 
-        /* Page Styling */
         .stApp {
             background-color: #f4f4f4;
             color: #333;
         }
 
-        /* Title Styling */
         .title {
             text-align: center;
             font-size: 36px;
@@ -31,7 +29,6 @@ st.markdown("""
             color: #1f77b4;
         }
 
-        /* File Uploader Styling */
         .uploaded-file {
             border-radius: 10px;
             background: #fff;
@@ -39,7 +36,6 @@ st.markdown("""
             box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.1);
         }
 
-        /* Button Styling */
         .stButton>button {
             border-radius: 8px;
             padding: 8px 16px;
@@ -56,28 +52,20 @@ st.markdown("""
             transform: scale(1.05);
         }
 
-        /* Data Table */
         .dataframe {
             border-radius: 10px;
             overflow: hidden;
         }
 
-        /* Checkboxes */
         .stCheckbox>label {
             font-weight: 600;
             color: #1f77b4;
-        }
-
-        /* Sidebar Styling */
-        .stSidebar {
-            background-color: #2a2a2a !important;
-            color: white !important;
         }
         
     </style>
 """, unsafe_allow_html=True)
 
-# Set up our App
+# Set up App Title
 st.markdown('<h1 class="title">Data Sweeper</h1>', unsafe_allow_html=True)
 st.write("Transform your files between CSV and Excel formats with built-in data cleaning and visualization!")
 
@@ -88,15 +76,19 @@ if uploaded_files:
         file_ext = os.path.splitext(file.name)[-1].lower()
 
         # Read file based on extension
-        if file_ext == ".csv":
-            df = pd.read_csv(file)
-        elif file_ext == ".xlsx":
-            df = pd.read_excel(file)
-        else:
-            st.error(f"Unsupported file type: {file_ext}")
+        try:
+            if file_ext == ".csv":
+                df = pd.read_csv(file)
+            elif file_ext == ".xlsx":
+                df = pd.read_excel(file, engine="openpyxl")  # ✅ Explicit engine for xlsx
+            else:
+                st.error(f"Unsupported file type: {file_ext}")
+                continue
+        except Exception as e:
+            st.error(f"Error reading file {file.name}: {str(e)}")
             continue
 
-        # Display file info with improved styling
+        # Display file info
         file_size_kb = file.getbuffer().nbytes / 1024
         st.markdown(f"""
             <div class="uploaded-file">
@@ -145,23 +137,30 @@ if uploaded_files:
         buffer = BytesIO()
 
         if st.button(f"💾 Convert {file.name}"):
-            if conversion_type == "CSV":
-                df.to_csv(buffer, index=False)
-                new_file_name = file.name.replace(file_ext, ".csv")
-                mime_type = "text/csv"
-            elif conversion_type == "Excel":
-                df.to_excel(buffer, index=False, engine="xlsxwriter")
-                new_file_name = file.name.replace(file_ext, ".xlsx")
-                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            try:
+                if conversion_type == "CSV":
+                    df.to_csv(buffer, index=False)
+                    new_file_name = file.name.replace(file_ext, ".csv")
+                    mime_type = "text/csv"
 
-            buffer.seek(0)
+                elif conversion_type == "Excel":
+                    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:  # ✅ Use Explicit `xlsxwriter`
+                        df.to_excel(writer, index=False, sheet_name="Sheet1")
+                        writer.close()
 
-            # Download Button
-            st.download_button(
-                label=f"⬇️ Download {new_file_name}",
-                data=buffer,
-                file_name=new_file_name,
-                mime=mime_type
-            )
+                    new_file_name = file.name.replace(file_ext, ".xlsx")
+                    mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+                buffer.seek(0)
+
+                # Download Button
+                st.download_button(
+                    label=f"⬇️ Download {new_file_name}",
+                    data=buffer,
+                    file_name=new_file_name,
+                    mime=mime_type
+                )
+            except Exception as e:
+                st.error(f"Error during conversion: {str(e)}")
 
 st.success("🎉 All files processed!")
