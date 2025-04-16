@@ -143,7 +143,7 @@ elif choice == "Stored Data":
                     data_save(stored_data)
                     st.success("✅ Data Encrypted and Saved Successfully.")
                else:
-                    st.error("❌ All ffields are required.")
+                    st.error("❌ All fields are required.")
 
 # Retreive and Decrypt data section.
 elif choice == "Retreive Data":
