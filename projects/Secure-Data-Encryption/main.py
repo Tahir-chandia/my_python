@@ -78,7 +78,7 @@ if choice == "Home":
      st.subheader("Welcome to my 🔐 Data Encryption System using Streamlit! ")
      st.markdown("""This system allows user to:
 - Register and Login Securely.
-- Encrypt sensitiuve data using a unique passkey.
+- Encrypt sensitive data using a unique passkey.
 - Decrypt it with the correct passkey.
 - Lock the user out after 3 failed login attempts for 60 seconds.""")
 
